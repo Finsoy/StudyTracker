@@ -4,7 +4,8 @@ import { IPC, type BlockedPayload, type StudyTrackerApi, type TickPayload } from
 const api: StudyTrackerApi = {
   tracker: {
     getState: () => ipcRenderer.invoke(IPC.trackerGetState),
-    start: (category, note) => ipcRenderer.invoke(IPC.trackerStart, category, note),
+    start: (category, note, projectId, projectName) =>
+      ipcRenderer.invoke(IPC.trackerStart, category, note, projectId, projectName),
     stop: () => ipcRenderer.invoke(IPC.trackerStop)
   },
   stats: {
@@ -22,6 +23,13 @@ const api: StudyTrackerApi = {
   settings: {
     get: () => ipcRenderer.invoke(IPC.settingsGet),
     update: (patch) => ipcRenderer.invoke(IPC.settingsUpdate, patch)
+  },
+  toggl: {
+    getStatus: () => ipcRenderer.invoke(IPC.togglGetStatus),
+    testConnection: (token) => ipcRenderer.invoke(IPC.togglTestConnection, token),
+    setToken: (token) => ipcRenderer.invoke(IPC.togglSetToken, token),
+    getProjects: () => ipcRenderer.invoke(IPC.togglGetProjects),
+    createProject: (name) => ipcRenderer.invoke(IPC.togglCreateProject, name)
   },
   events: {
     onTick: (handler) => {

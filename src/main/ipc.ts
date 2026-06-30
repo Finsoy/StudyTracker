@@ -11,21 +11,29 @@ import { gamesRepo, settingsRepo } from './db/database'
 import { scanSteamGames } from './services/SteamScanner'
 import type { TrackerService } from './services/TrackerService'
 import type { GoalService } from './services/GoalService'
+import type { TogglService } from './services/TogglService'
 import { applyAutostart } from './autostart'
 
 interface IpcServices {
   tracker: TrackerService
   goal: GoalService
+  toggl: TogglService
 }
 
 export function registerIpc(services: IpcServices): void {
-  const { tracker, goal } = services
+  const { tracker, goal, toggl } = services
 
   ipcMain.handle(IPC.trackerGetState, () => tracker.getState())
 
   ipcMain.handle(
     IPC.trackerStart,
-    (_event, category: SessionCategory, note: string | null) => tracker.start(category, note)
+    (
+      _event,
+      category: SessionCategory,
+      note: string | null,
+      projectId: number | null,
+      projectName: string | null
+    ) => tracker.start(category, note, projectId, projectName)
   )
 
   ipcMain.handle(IPC.trackerStop, () => tracker.stop())
@@ -87,4 +95,17 @@ export function registerIpc(services: IpcServices): void {
     }
     return updated
   })
+
+  ipcMain.handle(IPC.togglGetStatus, () => toggl.getStatus())
+
+  ipcMain.handle(IPC.togglTestConnection, (_event, token: string) => toggl.testAndSaveToken(token))
+
+  ipcMain.handle(IPC.togglSetToken, async (_event, token: string) => {
+    await toggl.testAndSaveToken(token)
+    return toggl.getStatus()
+  })
+
+  ipcMain.handle(IPC.togglGetProjects, () => toggl.getProjects())
+
+  ipcMain.handle(IPC.togglCreateProject, (_event, name: string) => toggl.createProject(name))
 }

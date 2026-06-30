@@ -6,6 +6,9 @@ import type {
   SessionCategory,
   SteamGameCandidate,
   StatsRangeKind,
+  TogglConnectionInfo,
+  TogglProject,
+  TogglStatus,
   TrackerState
 } from './types'
 
@@ -23,6 +26,11 @@ export const IPC = {
   gamesSetEnabled: 'games:setEnabled',
   settingsGet: 'settings:get',
   settingsUpdate: 'settings:update',
+  togglGetStatus: 'toggl:getStatus',
+  togglTestConnection: 'toggl:testConnection',
+  togglSetToken: 'toggl:setToken',
+  togglGetProjects: 'toggl:getProjects',
+  togglCreateProject: 'toggl:createProject',
   eventTick: 'event:tick',
   eventBlocked: 'event:blocked'
 } as const
@@ -39,7 +47,12 @@ export interface BlockedPayload {
 export interface StudyTrackerApi {
   tracker: {
     getState(): Promise<TrackerState>
-    start(category: SessionCategory, note: string | null): Promise<TrackerState>
+    start(
+      category: SessionCategory,
+      note: string | null,
+      projectId: number | null,
+      projectName: string | null
+    ): Promise<TrackerState>
     stop(): Promise<TrackerState>
   }
   stats: {
@@ -57,6 +70,13 @@ export interface StudyTrackerApi {
   settings: {
     get(): Promise<AppSettings>
     update(patch: Partial<AppSettings>): Promise<AppSettings>
+  }
+  toggl: {
+    getStatus(): Promise<TogglStatus>
+    testConnection(token: string): Promise<TogglConnectionInfo>
+    setToken(token: string): Promise<TogglStatus>
+    getProjects(): Promise<TogglProject[]>
+    createProject(name: string): Promise<TogglProject>
   }
   events: {
     onTick(handler: (payload: TickPayload) => void): () => void

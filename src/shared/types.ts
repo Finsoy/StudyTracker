@@ -15,6 +15,9 @@ export interface ActiveSession {
   startedAt: number
   category: SessionCategory
   note: string | null
+  projectId: number | null
+  projectName: string | null
+  togglEntryId: number | null
 }
 
 export interface BlockedGame {
@@ -39,6 +42,28 @@ export interface AppSettings {
   resetHour: number
   autostartEnabled: boolean
   blockingEnabled: boolean
+  togglEnabled: boolean
+  togglWorkspaceId: number | null
+}
+
+export interface TogglProject {
+  id: number
+  name: string
+  color: string
+  active: boolean
+}
+
+export interface TogglConnectionInfo {
+  email: string
+  fullName: string
+  workspaceId: number
+  workspaceName: string
+}
+
+export interface TogglStatus {
+  enabled: boolean
+  connected: boolean
+  lastError: string | null
 }
 
 export interface GoalStatus {

@@ -1,17 +1,33 @@
 import type { ActiveSession, SessionCategory, TrackerState } from '@shared/types'
 import { dayKeyFor } from '@shared/time'
 import { sessionsRepo, settingsRepo } from '../db/database'
+import type { TogglService } from './TogglService'
 
 export class TrackerService {
   private active: ActiveSession | null = null
+
+  constructor(private readonly toggl?: TogglService) {}
 
   getActive(): ActiveSession | null {
     return this.active
   }
 
-  start(category: SessionCategory, note: string | null): TrackerState {
+  start(
+    category: SessionCategory,
+    note: string | null,
+    projectId: number | null = null,
+    projectName: string | null = null
+  ): TrackerState {
     if (!this.active) {
-      this.active = { startedAt: Date.now(), category, note }
+      const startedAt = Date.now()
+      this.active = { startedAt, category, note, projectId, projectName, togglEntryId: null }
+      // Category is mirrored as a tag so the work/study split is visible in Toggl.
+      this.toggl?.mirrorStart({
+        description: note,
+        projectId,
+        tags: [category],
+        startMs: startedAt
+      })
     }
     return this.getState()
   }
@@ -33,6 +49,7 @@ export class TrackerService {
         })
       }
       this.active = null
+      this.toggl?.mirrorStop()
     }
     return this.getState()
   }

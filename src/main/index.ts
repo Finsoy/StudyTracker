@@ -5,6 +5,7 @@ import { initDatabase, settingsRepo } from './db/database'
 import { TrackerService } from './services/TrackerService'
 import { GoalService } from './services/GoalService'
 import { BlockerService } from './services/BlockerService'
+import { TogglService } from './services/TogglService'
 import { registerIpc } from './ipc'
 import { syncAutostart } from './autostart'
 import { loadAppIcon } from './tray-icon'
@@ -16,7 +17,8 @@ let tray: Tray | null = null
 let tickTimer: NodeJS.Timeout | null = null
 let isQuitting = false
 
-const tracker = new TrackerService()
+const toggl = new TogglService()
+const tracker = new TrackerService(toggl)
 const goal = new GoalService(tracker)
 const blocker = new BlockerService(goal)
 
@@ -132,7 +134,7 @@ if (!singleInstanceLock) {
     initDatabase()
     syncAutostart(settingsRepo.get().autostartEnabled)
 
-    registerIpc({ tracker, goal })
+    registerIpc({ tracker, goal, toggl })
     blocker.setBlockHandler((event) => notifyBlocked(event.gameName))
     blocker.start()
 

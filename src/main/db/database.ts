@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { app } from 'electron'
+import { app, safeStorage } from 'electron'
 import Database from 'better-sqlite3'
 import type {
   AppSettings,
@@ -14,8 +14,12 @@ const DEFAULT_SETTINGS: AppSettings = {
   goalWeekendSec: 1 * 60 * 60,
   resetHour: 4,
   autostartEnabled: false,
-  blockingEnabled: true
+  blockingEnabled: true,
+  togglEnabled: false,
+  togglWorkspaceId: null
 }
+
+const TOGGL_TOKEN_KEY = 'togglApiToken'
 
 let db: Database.Database
 
@@ -183,7 +187,9 @@ export const settingsRepo = {
       goalWeekendSec: numberOr(stored.get('goalWeekendSec'), DEFAULT_SETTINGS.goalWeekendSec),
       resetHour: numberOr(stored.get('resetHour'), DEFAULT_SETTINGS.resetHour),
       autostartEnabled: boolOr(stored.get('autostartEnabled'), DEFAULT_SETTINGS.autostartEnabled),
-      blockingEnabled: boolOr(stored.get('blockingEnabled'), DEFAULT_SETTINGS.blockingEnabled)
+      blockingEnabled: boolOr(stored.get('blockingEnabled'), DEFAULT_SETTINGS.blockingEnabled),
+      togglEnabled: boolOr(stored.get('togglEnabled'), DEFAULT_SETTINGS.togglEnabled),
+      togglWorkspaceId: numberOrNull(stored.get('togglWorkspaceId'))
     }
   },
 
@@ -195,10 +201,45 @@ export const settingsRepo = {
       for (const [key, value] of entries) write.run(key, value)
     })
     const entries = Object.entries(patch).map(
-      ([key, value]) => [key, String(value)] as [string, string]
+      ([key, value]) => [key, value === null || value === undefined ? '' : String(value)] as [string, string]
     )
     apply(entries)
     return settingsRepo.get()
+  }
+}
+
+/**
+ * Stores the Toggl API token. The token is a credential, so it is encrypted via
+ * Electron safeStorage when available; we never expose it back to the renderer.
+ */
+export const togglTokenRepo = {
+  get(): string | null {
+    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(TOGGL_TOKEN_KEY) as
+      | { value: string }
+      | undefined
+    if (!row || !row.value) return null
+    if (!row.value.startsWith('enc:')) return row.value
+    if (!safeStorage.isEncryptionAvailable()) return null
+    try {
+      return safeStorage.decryptString(Buffer.from(row.value.slice(4), 'base64'))
+    } catch {
+      return null
+    }
+  },
+
+  set(token: string): void {
+    const trimmed = token.trim()
+    const stored =
+      trimmed && safeStorage.isEncryptionAvailable()
+        ? 'enc:' + safeStorage.encryptString(trimmed).toString('base64')
+        : trimmed
+    db.prepare(
+      'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
+    ).run(TOGGL_TOKEN_KEY, stored)
+  },
+
+  hasToken(): boolean {
+    return Boolean(togglTokenRepo.get())
   }
 }
 
@@ -206,6 +247,12 @@ function numberOr(raw: string | undefined, fallback: number): number {
   if (raw === undefined) return fallback
   const parsed = Number(raw)
   return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function numberOrNull(raw: string | undefined): number | null {
+  if (raw === undefined || raw === '') return null
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) ? parsed : null
 }
 
 function boolOr(raw: string | undefined, fallback: boolean): boolean {

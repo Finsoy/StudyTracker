@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { AppSettings } from '@shared/types'
+import type { AppSettings, TogglStatus } from '@shared/types'
 import { useToast } from '../components/toast'
 
 function Toggle({
@@ -68,6 +68,91 @@ function NumberField({
         <span className="w-10 text-xs text-gray-500">{suffix}</span>
       </span>
     </label>
+  )
+}
+
+function TogglSection({
+  enabled,
+  onToggleEnabled
+}: {
+  enabled: boolean
+  onToggleEnabled: (value: boolean) => void
+}) {
+  const { addToast } = useToast()
+  const [status, setStatus] = useState<TogglStatus | null>(null)
+  const [token, setToken] = useState('')
+  const [testing, setTesting] = useState(false)
+
+  useEffect(() => {
+    void window.api.toggl.getStatus().then(setStatus)
+  }, [])
+
+  async function handleConnect() {
+    if (!token.trim()) return
+    setTesting(true)
+    try {
+      const info = await window.api.toggl.testConnection(token.trim())
+      setToken('')
+      setStatus(await window.api.toggl.getStatus())
+      addToast(`Подключено: ${info.email} (${info.workspaceName})`, 'success')
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Не удалось подключиться', 'warning')
+    } finally {
+      setTesting(false)
+    }
+  }
+
+  return (
+    <div className="mt-6 rounded-2xl border border-white/5 bg-[#0d1220] p-6">
+      <h2 className="mb-2 text-sm font-semibold text-white">Toggl Track</h2>
+      <div className="divide-y divide-white/5">
+        <Toggle
+          label="Синхронизировать с Toggl Track"
+          hint="Зеркалить старт/стоп сессий в Toggl (с проектом; категория идёт тегом)"
+          checked={enabled}
+          onChange={onToggleEnabled}
+        />
+        <div className="py-3">
+          <div className="mb-2 text-sm text-gray-200">API-токен</div>
+          <div className="mb-2 flex gap-2">
+            <input
+              type="password"
+              value={token}
+              onChange={(event) => setToken(event.target.value)}
+              placeholder={status?.connected ? 'Токен сохранён — введи новый для замены' : 'Вставь API-токен из профиля Toggl'}
+              className="flex-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-gray-100 outline-none focus:border-indigo-400/50"
+            />
+            <button
+              onClick={handleConnect}
+              disabled={testing || !token.trim()}
+              className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-400 disabled:opacity-50"
+            >
+              {testing ? 'Проверка…' : 'Проверить'}
+            </button>
+          </div>
+          <p className="text-xs text-gray-600">
+            Токен найдёшь в Toggl Track: Profile settings → API Token. Хранится в зашифрованном виде
+            локально.
+          </p>
+          {status && (
+            <div className="mt-2 flex items-center gap-2 text-xs">
+              <span
+                className={`inline-block h-2 w-2 rounded-full ${
+                  status.lastError ? 'bg-amber-400' : status.connected ? 'bg-emerald-400' : 'bg-gray-500'
+                }`}
+              />
+              <span className="text-gray-400">
+                {status.lastError
+                  ? `Ошибка: ${status.lastError}`
+                  : status.connected
+                    ? 'Подключено'
+                    : 'Не подключено'}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -151,6 +236,14 @@ export function SettingsPage() {
           />
         </div>
       </div>
+
+      <TogglSection
+        enabled={settings.togglEnabled}
+        onToggleEnabled={(value) => {
+          void patch({ togglEnabled: value })
+          addToast(value ? 'Синхронизация с Toggl включена' : 'Синхронизация с Toggl выключена', 'info')
+        }}
+      />
     </div>
   )
 }
