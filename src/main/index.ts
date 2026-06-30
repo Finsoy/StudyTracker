@@ -7,7 +7,7 @@ import { GoalService } from './services/GoalService'
 import { BlockerService } from './services/BlockerService'
 import { registerIpc } from './ipc'
 import { syncAutostart } from './autostart'
-import { createAppIcon } from './tray-icon'
+import { loadAppIcon } from './tray-icon'
 
 const isDev = !!process.env.ELECTRON_RENDERER_URL
 
@@ -28,7 +28,7 @@ function createWindow(): void {
     minHeight: 600,
     show: false,
     autoHideMenuBar: true,
-    icon: createAppIcon(256),
+    icon: loadAppIcon(),
     title: 'StudyTracker',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -87,7 +87,7 @@ function requestQuit(): void {
 }
 
 function createTray(): void {
-  tray = new Tray(createAppIcon(16))
+  tray = new Tray(loadAppIcon(16))
   tray.setToolTip('StudyTracker')
   const menu = Menu.buildFromTemplate([
     { label: 'Открыть StudyTracker', click: showWindow },
@@ -115,7 +115,7 @@ function notifyBlocked(gameName: string): void {
     new Notification({
       title: 'Игра заблокирована',
       body: `${gameName}: позанимайся ещё ${remainingMin} мин, чтобы разблокировать.`,
-      icon: createAppIcon(64)
+      icon: loadAppIcon(64)
     }).show()
   }
   mainWindow?.webContents.send(IPC.eventBlocked, { gameName })

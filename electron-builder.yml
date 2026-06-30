@@ -8,10 +8,17 @@ files:
   - package.json
 asarUnpack:
   - "**/node_modules/better-sqlite3/**"
+extraResources:
+  - from: build/icon.png
+    to: icon.png
 win:
+  icon: build/icon.ico
   target:
     - nsis
 nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: StudyTracker
