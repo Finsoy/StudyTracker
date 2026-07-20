@@ -4,6 +4,7 @@ import { ToastProvider, useToast } from './components/toast'
 import { Sidebar, type TabKey } from './components/Sidebar'
 import { DashboardPage } from './pages/DashboardPage'
 import { SessionPage } from './pages/SessionPage'
+import { ProgressPage } from './pages/ProgressPage'
 import { GamesPage } from './pages/GamesPage'
 import { SettingsPage } from './pages/SettingsPage'
 
@@ -22,6 +23,7 @@ function AppShell() {
   const [tab, setTab] = useState<TabKey>('dashboard')
   const [state, setState] = useState<TrackerState>(EMPTY_STATE)
   const [goal, setGoal] = useState<GoalStatus>(EMPTY_GOAL)
+  const [streakCurrent, setStreakCurrent] = useState(0)
   const [nowMs, setNowMs] = useState(0)
   const { addToast } = useToast()
 
@@ -31,28 +33,43 @@ function AppShell() {
       setNowMs(Date.now())
     })
     void window.api.stats.getGoal().then(setGoal)
+    void window.api.gamification.get().then((snapshot) => {
+      setStreakCurrent(snapshot.streak.current)
+    })
 
     const offTick = window.api.events.onTick((payload) => {
       setState(payload.state)
       setGoal(payload.goal)
+      setStreakCurrent(payload.streakCurrent)
       setNowMs(Date.now())
     })
     const offBlocked = window.api.events.onBlocked((payload) => {
       addToast(`«${payload.gameName}» заблокирована — цель ещё не достигнута`, 'warning')
     })
+    const offMilestone = window.api.events.onMilestone((payload) => {
+      addToast(`Ачивка: ${payload.milestone.label}`, 'success')
+    })
     return () => {
       offTick()
       offBlocked()
+      offMilestone()
     }
   }, [addToast])
 
   return (
     <div className="flex h-full">
-      <Sidebar tab={tab} onChange={setTab} goal={goal} active={state.active !== null} />
+      <Sidebar
+        tab={tab}
+        onChange={setTab}
+        goal={goal}
+        active={state.active !== null}
+        streakCurrent={streakCurrent}
+      />
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-5xl px-8 py-8">
           {tab === 'dashboard' && <DashboardPage goal={goal} />}
           {tab === 'session' && <SessionPage state={state} goal={goal} nowMs={nowMs} />}
+          {tab === 'progress' && <ProgressPage />}
           {tab === 'games' && <GamesPage />}
           {tab === 'settings' && <SettingsPage />}
         </div>

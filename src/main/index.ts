@@ -6,6 +6,7 @@ import { TrackerService } from './services/TrackerService'
 import { GoalService } from './services/GoalService'
 import { BlockerService } from './services/BlockerService'
 import { TogglService } from './services/TogglService'
+import { GamificationService } from './services/GamificationService'
 import { registerIpc } from './ipc'
 import { syncAutostart } from './autostart'
 import { loadAppIcon } from './tray-icon'
@@ -20,6 +21,7 @@ let isQuitting = false
 const toggl = new TogglService()
 const tracker = new TrackerService(toggl)
 const goal = new GoalService(tracker)
+const gamification = new GamificationService(tracker)
 const blocker = new BlockerService(goal)
 
 function createWindow(): void {
@@ -105,7 +107,8 @@ function startTick(): void {
     if (!mainWindow || mainWindow.isDestroyed()) return
     mainWindow.webContents.send(IPC.eventTick, {
       state: tracker.getState(),
-      goal: goal.getStatus()
+      goal: goal.getStatus(),
+      streakCurrent: gamification.getStreakCurrentCached()
     })
   }, 1000)
 }
@@ -134,7 +137,7 @@ if (!singleInstanceLock) {
     initDatabase()
     syncAutostart(settingsRepo.get().autostartEnabled)
 
-    registerIpc({ tracker, goal, toggl })
+    registerIpc({ tracker, goal, toggl, gamification })
     blocker.setBlockHandler((event) => notifyBlocked(event.gameName))
     blocker.start()
 

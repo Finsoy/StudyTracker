@@ -12,16 +12,18 @@ import { scanSteamGames } from './services/SteamScanner'
 import type { TrackerService } from './services/TrackerService'
 import type { GoalService } from './services/GoalService'
 import type { TogglService } from './services/TogglService'
+import type { GamificationService } from './services/GamificationService'
 import { applyAutostart } from './autostart'
 
 interface IpcServices {
   tracker: TrackerService
   goal: GoalService
   toggl: TogglService
+  gamification: GamificationService
 }
 
 export function registerIpc(services: IpcServices): void {
-  const { tracker, goal, toggl } = services
+  const { tracker, goal, toggl, gamification } = services
 
   ipcMain.handle(IPC.trackerGetState, () => tracker.getState())
 
@@ -36,7 +38,17 @@ export function registerIpc(services: IpcServices): void {
     ) => tracker.start(category, note, projectId, projectName)
   )
 
-  ipcMain.handle(IPC.trackerStop, () => tracker.stop())
+  ipcMain.handle(IPC.trackerStop, (event) => {
+    const state = tracker.stop()
+    const newly = gamification.checkNewMilestones()
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (window && !window.isDestroyed()) {
+      for (const milestone of newly) {
+        window.webContents.send(IPC.eventMilestone, { milestone })
+      }
+    }
+    return state
+  })
 
   ipcMain.handle(IPC.statsGetDays, (_event, kind: StatsRangeKind) => goal.getDayStats(kind))
 
@@ -108,4 +120,14 @@ export function registerIpc(services: IpcServices): void {
   ipcMain.handle(IPC.togglGetProjects, () => toggl.getProjects())
 
   ipcMain.handle(IPC.togglCreateProject, (_event, name: string) => toggl.createProject(name))
+
+  ipcMain.handle(IPC.gamificationGet, () => gamification.getSnapshot())
+
+  ipcMain.handle(
+    IPC.seasonCreate,
+    (_event, input: { name?: string; weeks?: number; goalHours?: number }) =>
+      gamification.createSeason(input ?? {})
+  )
+
+  ipcMain.handle(IPC.seasonComplete, () => gamification.completeActiveSeason())
 }

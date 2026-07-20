@@ -42,3 +42,23 @@ export function formatHms(totalSec: number): string {
   const pad = (value: number) => String(value).padStart(2, '0')
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
 }
+
+/** Shifts a logical dayKey by `deltaDays` (may be negative). */
+export function shiftDayKey(dayKey: string, deltaDays: number): string {
+  const [year, month, day] = dayKey.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  date.setDate(date.getDate() + deltaDays)
+  const yyyy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+/** Inclusive count of logical days between two dayKeys (start <= end). */
+export function daysBetweenInclusive(startDayKey: string, endDayKey: string): number {
+  const [startYear, startMonth, startDay] = startDayKey.split('-').map(Number)
+  const [endYear, endMonth, endDay] = endDayKey.split('-').map(Number)
+  const start = new Date(startYear, startMonth - 1, startDay).getTime()
+  const end = new Date(endYear, endMonth - 1, endDay).getTime()
+  return Math.round((end - start) / 86_400_000) + 1
+}

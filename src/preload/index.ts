@@ -1,5 +1,11 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import { IPC, type BlockedPayload, type StudyTrackerApi, type TickPayload } from '@shared/ipc'
+import {
+  IPC,
+  type BlockedPayload,
+  type MilestonePayload,
+  type StudyTrackerApi,
+  type TickPayload
+} from '@shared/ipc'
 
 const api: StudyTrackerApi = {
   tracker: {
@@ -31,6 +37,11 @@ const api: StudyTrackerApi = {
     getProjects: () => ipcRenderer.invoke(IPC.togglGetProjects),
     createProject: (name) => ipcRenderer.invoke(IPC.togglCreateProject, name)
   },
+  gamification: {
+    get: () => ipcRenderer.invoke(IPC.gamificationGet),
+    createSeason: (input) => ipcRenderer.invoke(IPC.seasonCreate, input),
+    completeSeason: () => ipcRenderer.invoke(IPC.seasonComplete)
+  },
   events: {
     onTick: (handler) => {
       const listener = (_event: IpcRendererEvent, payload: TickPayload) => handler(payload)
@@ -41,6 +52,11 @@ const api: StudyTrackerApi = {
       const listener = (_event: IpcRendererEvent, payload: BlockedPayload) => handler(payload)
       ipcRenderer.on(IPC.eventBlocked, listener)
       return () => ipcRenderer.removeListener(IPC.eventBlocked, listener)
+    },
+    onMilestone: (handler) => {
+      const listener = (_event: IpcRendererEvent, payload: MilestonePayload) => handler(payload)
+      ipcRenderer.on(IPC.eventMilestone, listener)
+      return () => ipcRenderer.removeListener(IPC.eventMilestone, listener)
     }
   }
 }

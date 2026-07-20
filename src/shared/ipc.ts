@@ -2,7 +2,10 @@ import type {
   AppSettings,
   BlockedGame,
   DayStat,
+  GamificationSnapshot,
   GoalStatus,
+  MilestoneStatus,
+  Season,
   SessionCategory,
   SteamGameCandidate,
   StatsRangeKind,
@@ -31,17 +34,27 @@ export const IPC = {
   togglSetToken: 'toggl:setToken',
   togglGetProjects: 'toggl:getProjects',
   togglCreateProject: 'toggl:createProject',
+  gamificationGet: 'gamification:get',
+  seasonCreate: 'season:create',
+  seasonComplete: 'season:complete',
   eventTick: 'event:tick',
-  eventBlocked: 'event:blocked'
+  eventBlocked: 'event:blocked',
+  eventMilestone: 'event:milestone'
 } as const
 
 export interface TickPayload {
   state: TrackerState
   goal: GoalStatus
+  /** Cheap streak length for the sidebar badge; refreshed on a slower cadence. */
+  streakCurrent: number
 }
 
 export interface BlockedPayload {
   gameName: string
+}
+
+export interface MilestonePayload {
+  milestone: MilestoneStatus
 }
 
 export interface StudyTrackerApi {
@@ -78,8 +91,18 @@ export interface StudyTrackerApi {
     getProjects(): Promise<TogglProject[]>
     createProject(name: string): Promise<TogglProject>
   }
+  gamification: {
+    get(): Promise<GamificationSnapshot>
+    createSeason(input: {
+      name?: string
+      weeks?: number
+      goalHours?: number
+    }): Promise<Season>
+    completeSeason(): Promise<void>
+  }
   events: {
     onTick(handler: (payload: TickPayload) => void): () => void
     onBlocked(handler: (payload: BlockedPayload) => void): () => void
+    onMilestone(handler: (payload: MilestonePayload) => void): () => void
   }
 }

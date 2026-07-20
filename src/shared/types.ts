@@ -44,6 +44,9 @@ export interface AppSettings {
   blockingEnabled: boolean
   togglEnabled: boolean
   togglWorkspaceId: number | null
+  /** Minimum seconds in a logical day to count toward the streak. */
+  streakMinSec: number
+  gamificationEnabled: boolean
 }
 
 export interface TogglProject {
@@ -93,4 +96,65 @@ export interface SteamGameCandidate {
   installDir: string
 }
 
-export type StatsRangeKind = 'today' | 'yesterday' | 'week' | 'last30'
+export type StatsRangeKind = 'today' | 'yesterday' | 'week' | 'last30' | 'year'
+
+export type SeasonStatus = 'active' | 'completed' | 'archived'
+
+export interface Season {
+  id: number
+  name: string
+  startDayKey: string
+  endDayKey: string
+  goalSec: number
+  status: SeasonStatus
+  createdAt: number
+}
+
+export interface StreakInfo {
+  current: number
+  best: number
+  minSec: number
+  todayQualified: boolean
+  /** Streak is not broken yet — today can still be saved. */
+  aliveToday: boolean
+}
+
+export interface LevelInfo {
+  level: number
+  title: string
+  totalSec: number
+  levelStartSec: number
+  nextLevelSec: number
+  /** 0..1 progress within the current level. */
+  progress: number
+}
+
+export interface SeasonProgress {
+  season: Season
+  accumulatedSec: number
+  goalSec: number
+  progress: number
+  daysTotal: number
+  daysElapsed: number
+  daysLeft: number
+  activeDays: number
+}
+
+export type MilestoneKind = 'streak' | 'totalHours' | 'season'
+
+export interface MilestoneStatus {
+  id: string
+  kind: MilestoneKind
+  label: string
+  hint: string
+  achieved: boolean
+  achievedAt: number | null
+}
+
+export interface GamificationSnapshot {
+  enabled: boolean
+  streak: StreakInfo
+  level: LevelInfo
+  season: SeasonProgress | null
+  milestones: MilestoneStatus[]
+}

@@ -237,6 +237,36 @@ export function SettingsPage() {
         </div>
       </div>
 
+      <div className="mt-6 rounded-2xl border border-white/5 bg-[#0d1220] p-6">
+        <h2 className="mb-2 text-sm font-semibold text-white">Геймификация</h2>
+        <div className="divide-y divide-white/5">
+          <Toggle
+            label="Геймификация"
+            hint="Стрик, уровень, сезоны и ачивки"
+            checked={settings.gamificationEnabled}
+            onChange={(value) => {
+              void patch({ gamificationEnabled: value })
+              addToast(value ? 'Геймификация включена' : 'Геймификация выключена', 'info')
+            }}
+          />
+          <NumberField
+            label="Порог зачётного дня для стрика"
+            value={Math.round(settings.streakMinSec / 60)}
+            suffix="мин"
+            step={5}
+            min={5}
+            max={240}
+            onChange={(minutes) =>
+              patch({ streakMinSec: Math.max(5, Math.min(240, Math.round(minutes))) * 60 })
+            }
+          />
+        </div>
+        <p className="mt-3 text-xs text-gray-600">
+          Порог стрика отдельно от дневной цели: достаточно короткой сессии, чтобы не рвать цепь.
+          Выходные не рвут стрик.
+        </p>
+      </div>
+
       <TogglSection
         enabled={settings.togglEnabled}
         onToggleEnabled={(value) => {

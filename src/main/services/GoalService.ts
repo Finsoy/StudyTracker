@@ -55,6 +55,10 @@ export class GoalService {
       case 'last30':
         dayKeys = recentDayKeys(todayKey, 30)
         break
+      case 'year':
+        // ~53 weeks so the GitHub-style heatmap can align to week boundaries.
+        dayKeys = recentDayKeys(todayKey, 371)
+        break
     }
     return dayKeys.map((dayKey) => {
       const breakdown = sessionsRepo.dayBreakdown(dayKey)

@@ -8,7 +8,7 @@ import {
   XAxis,
   YAxis
 } from 'recharts'
-import type { DayStat, GoalStatus } from '@shared/types'
+import type { DayStat, GoalStatus, LevelInfo, StreakInfo } from '@shared/types'
 import { formatHms } from '@shared/time'
 
 interface DashboardPageProps {
@@ -20,25 +20,53 @@ function labelForDate(dayKey: string): string {
   return `${day}.${month}`
 }
 
-function StatCard({ title, value, accent }: { title: string; value: string; accent?: string }) {
+function StatCard({
+  title,
+  value,
+  accent,
+  subtitle,
+  progress
+}: {
+  title: string
+  value: string
+  accent?: string
+  subtitle?: string
+  progress?: number
+}) {
   return (
     <div className="rounded-2xl border border-white/5 bg-[#0d1220] p-5">
       <div className="text-xs uppercase tracking-wider text-gray-500">{title}</div>
       <div className={`mt-2 font-mono text-2xl font-bold tabular-nums ${accent ?? 'text-white'}`}>
         {value}
       </div>
+      {subtitle && <div className="mt-1 text-xs text-gray-500">{subtitle}</div>}
+      {progress !== undefined && (
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/5">
+          <div
+            className="h-full rounded-full bg-indigo-400 transition-[width] duration-500"
+            style={{ width: `${Math.round(Math.min(1, Math.max(0, progress)) * 100)}%` }}
+          />
+        </div>
+      )}
     </div>
   )
 }
 
 export function DashboardPage({ goal }: DashboardPageProps) {
   const [week, setWeek] = useState<DayStat[]>([])
+  const [streak, setStreak] = useState<StreakInfo | null>(null)
+  const [level, setLevel] = useState<LevelInfo | null>(null)
 
   useEffect(() => {
     let mounted = true
     const load = () => {
       void window.api.stats.getDays('week').then((days) => {
         if (mounted) setWeek(days)
+      })
+      void window.api.gamification.get().then((snapshot) => {
+        if (!mounted || !snapshot.enabled) return
+        setStreak(snapshot.streak)
+        setLevel(snapshot.level)
       })
     }
     load()
@@ -80,6 +108,27 @@ export function DashboardPage({ goal }: DashboardPageProps) {
           value={yesterday ? formatHms(yesterday.totalSec) : '00:00:00'}
         />
       </div>
+
+      {(streak || level) && (
+        <div className="mt-4 grid grid-cols-2 gap-4">
+          {streak && (
+            <StatCard
+              title="Стрик"
+              value={`${streak.current} дн.`}
+              accent="text-orange-300"
+              subtitle={`Рекорд: ${streak.best} дн.`}
+            />
+          )}
+          {level && (
+            <StatCard
+              title="Уровень"
+              value={`Ур. ${level.level} · ${level.title}`}
+              accent="text-indigo-300"
+              progress={level.progress}
+            />
+          )}
+        </div>
+      )}
 
       <div className="mt-6 rounded-2xl border border-white/5 bg-[#0d1220] p-6">
         <div className="mb-4 flex items-baseline justify-between">

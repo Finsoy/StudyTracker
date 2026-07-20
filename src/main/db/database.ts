@@ -5,6 +5,8 @@ import type {
   AppSettings,
   BlockedGame,
   NewBlockedGame,
+  Season,
+  SeasonStatus,
   Session,
   SessionCategory
 } from '@shared/types'
@@ -16,7 +18,9 @@ const DEFAULT_SETTINGS: AppSettings = {
   autostartEnabled: false,
   blockingEnabled: true,
   togglEnabled: false,
-  togglWorkspaceId: null
+  togglWorkspaceId: null,
+  streakMinSec: 30 * 60,
+  gamificationEnabled: true
 }
 
 const TOGGL_TOKEN_KEY = 'togglApiToken'
@@ -51,6 +55,21 @@ export function initDatabase(): void {
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS seasons (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      startDayKey TEXT NOT NULL,
+      endDayKey TEXT NOT NULL,
+      goalSec INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      createdAt INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS milestone_unlocks (
+      id TEXT PRIMARY KEY,
+      achievedAt INTEGER NOT NULL
     );
   `)
 }
@@ -137,6 +156,111 @@ export const sessionsRepo = {
       if (row.category === 'study') studySec = row.total
     }
     return { workSec, studySec }
+  },
+
+  totalSecAllTime(): number {
+    const row = db
+      .prepare('SELECT COALESCE(SUM(durationSec), 0) AS total FROM sessions')
+      .get() as { total: number }
+    return row.total
+  },
+
+  /** Map of dayKey -> total seconds for days with any tracked time. */
+  dailyTotals(): Map<string, number> {
+    const rows = db
+      .prepare(
+        `SELECT dayKey, SUM(durationSec) AS total
+         FROM sessions GROUP BY dayKey HAVING total > 0`
+      )
+      .all() as { dayKey: string; total: number }[]
+    return new Map(rows.map((row) => [row.dayKey, row.total]))
+  },
+
+  /** Inclusive sum of durationSec for logical days in [startDayKey, endDayKey]. */
+  sumForRange(startDayKey: string, endDayKey: string): number {
+    const row = db
+      .prepare(
+        `SELECT COALESCE(SUM(durationSec), 0) AS total
+         FROM sessions WHERE dayKey >= ? AND dayKey <= ?`
+      )
+      .get(startDayKey, endDayKey) as { total: number }
+    return row.total
+  }
+}
+
+interface SeasonRow {
+  id: number
+  name: string
+  startDayKey: string
+  endDayKey: string
+  goalSec: number
+  status: string
+  createdAt: number
+}
+
+function rowToSeason(row: SeasonRow): Season {
+  return {
+    id: row.id,
+    name: row.name,
+    startDayKey: row.startDayKey,
+    endDayKey: row.endDayKey,
+    goalSec: row.goalSec,
+    status: row.status as SeasonStatus,
+    createdAt: row.createdAt
+  }
+}
+
+export const seasonsRepo = {
+  getActive(): Season | null {
+    const row = db
+      .prepare("SELECT * FROM seasons WHERE status = 'active' ORDER BY id DESC LIMIT 1")
+      .get() as SeasonRow | undefined
+    return row ? rowToSeason(row) : null
+  },
+
+  list(): Season[] {
+    const rows = db.prepare('SELECT * FROM seasons ORDER BY id DESC').all() as SeasonRow[]
+    return rows.map(rowToSeason)
+  },
+
+  insert(season: {
+    name: string
+    startDayKey: string
+    endDayKey: string
+    goalSec: number
+    createdAt: number
+  }): Season {
+    const result = db
+      .prepare(
+        `INSERT INTO seasons (name, startDayKey, endDayKey, goalSec, status, createdAt)
+         VALUES (@name, @startDayKey, @endDayKey, @goalSec, 'active', @createdAt)`
+      )
+      .run(season)
+    const row = db
+      .prepare('SELECT * FROM seasons WHERE id = ?')
+      .get(result.lastInsertRowid) as SeasonRow
+    return rowToSeason(row)
+  },
+
+  setStatus(id: number, status: SeasonStatus): void {
+    db.prepare('UPDATE seasons SET status = ? WHERE id = ?').run(status, id)
+  }
+}
+
+export const milestonesRepo = {
+  listUnlocked(): Map<string, number> {
+    const rows = db.prepare('SELECT id, achievedAt FROM milestone_unlocks').all() as {
+      id: string
+      achievedAt: number
+    }[]
+    return new Map(rows.map((row) => [row.id, row.achievedAt]))
+  },
+
+  unlock(id: string, achievedAt: number): void {
+    db.prepare('INSERT OR IGNORE INTO milestone_unlocks (id, achievedAt) VALUES (?, ?)').run(
+      id,
+      achievedAt
+    )
   }
 }
 
@@ -189,7 +313,12 @@ export const settingsRepo = {
       autostartEnabled: boolOr(stored.get('autostartEnabled'), DEFAULT_SETTINGS.autostartEnabled),
       blockingEnabled: boolOr(stored.get('blockingEnabled'), DEFAULT_SETTINGS.blockingEnabled),
       togglEnabled: boolOr(stored.get('togglEnabled'), DEFAULT_SETTINGS.togglEnabled),
-      togglWorkspaceId: numberOrNull(stored.get('togglWorkspaceId'))
+      togglWorkspaceId: numberOrNull(stored.get('togglWorkspaceId')),
+      streakMinSec: numberOr(stored.get('streakMinSec'), DEFAULT_SETTINGS.streakMinSec),
+      gamificationEnabled: boolOr(
+        stored.get('gamificationEnabled'),
+        DEFAULT_SETTINGS.gamificationEnabled
+      )
     }
   },
 
