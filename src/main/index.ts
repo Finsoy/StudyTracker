@@ -26,9 +26,9 @@ const blocker = new BlockerService(goal)
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 1080,
-    height: 720,
-    minWidth: 880,
+    width: 1280,
+    height: 760,
+    minWidth: 1100,
     minHeight: 600,
     show: false,
     autoHideMenuBar: true,

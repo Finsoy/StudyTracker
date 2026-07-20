@@ -96,49 +96,52 @@ export function ActivityHeatmap({ days, todayKey }: ActivityHeatmapProps) {
   }, [days, todayKey])
 
   return (
-    <div className="mt-4 overflow-x-auto">
+    <div className="mt-4">
       <div className="mb-2 text-xs text-gray-500">
         {activeDays} активных {activeDays === 1 ? 'день' : activeDays < 5 ? 'дня' : 'дней'} за год
       </div>
 
-      <div className="inline-block min-w-max">
+      <div className="w-full">
         <div
-          className="mb-1 grid gap-[3px]"
+          className="mb-1 grid gap-[2px]"
           style={{
-            gridTemplateColumns: `28px repeat(${weeks.length}, 11px)`
+            gridTemplateColumns: `1.75rem repeat(${weeks.length}, minmax(0, 1fr))`
           }}
         >
           <div />
           {weeks.map((_, weekIndex) => {
             const label = monthLabels.find((entry) => entry.weekIndex === weekIndex)
             return (
-              <div key={weekIndex} className="relative h-3 text-[10px] leading-3 text-gray-500">
+              <div key={weekIndex} className="relative h-3 overflow-visible text-[10px] leading-3 text-gray-500">
                 {label ? <span className="absolute left-0 whitespace-nowrap">{label.label}</span> : null}
               </div>
             )
           })}
         </div>
 
-        <div className="flex gap-[3px]">
-          <div className="flex w-7 flex-col gap-[3px] text-[10px] leading-[11px] text-gray-500">
-            <span className="h-[11px]" />
-            <span className="h-[11px]">пн</span>
-            <span className="h-[11px]" />
-            <span className="h-[11px]">ср</span>
-            <span className="h-[11px]" />
-            <span className="h-[11px]">пт</span>
-            <span className="h-[11px]" />
+        <div className="flex gap-[2px]">
+          <div className="flex w-7 shrink-0 flex-col gap-[2px] text-[10px] leading-[10px] text-gray-500">
+            <span className="h-2.5" />
+            <span className="h-2.5">пн</span>
+            <span className="h-2.5" />
+            <span className="h-2.5">ср</span>
+            <span className="h-2.5" />
+            <span className="h-2.5">пт</span>
+            <span className="h-2.5" />
           </div>
 
-          <div className="flex gap-[3px]">
+          <div
+            className="grid min-w-0 flex-1 gap-[2px]"
+            style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }}
+          >
             {weeks.map((week, weekIndex) => (
-              <div key={weekIndex} className="flex flex-col gap-[3px]">
+              <div key={weekIndex} className="flex flex-col gap-[2px]">
                 {week.map((cell) => {
                   if (cell.future) {
                     return (
                       <div
                         key={cell.date}
-                        className="h-[11px] w-[11px] rounded-[2px] bg-transparent"
+                        className="aspect-square w-full rounded-[2px] bg-transparent"
                       />
                     )
                   }
@@ -147,7 +150,7 @@ export function ActivityHeatmap({ days, todayKey }: ActivityHeatmapProps) {
                     <div
                       key={cell.date}
                       title={`${formatDayLabel(cell.date)}: ${formatHms(cell.totalSec)}`}
-                      className={`h-[11px] w-[11px] rounded-[2px] ${LEVEL_CLASS[level]}`}
+                      className={`aspect-square w-full rounded-[2px] ${LEVEL_CLASS[level]}`}
                     />
                   )
                 })}
@@ -159,7 +162,7 @@ export function ActivityHeatmap({ days, todayKey }: ActivityHeatmapProps) {
         <div className="mt-3 flex items-center justify-end gap-1.5 text-[10px] text-gray-500">
           <span>Меньше</span>
           {LEVEL_CLASS.map((className, index) => (
-            <div key={index} className={`h-[11px] w-[11px] rounded-[2px] ${className}`} />
+            <div key={index} className={`h-2.5 w-2.5 rounded-[2px] ${className}`} />
           ))}
           <span>Больше</span>
         </div>
