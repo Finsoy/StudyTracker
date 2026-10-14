@@ -44,3 +44,31 @@ body {
   background: var(--color-line);
   border-radius: 9999px;
 }
+
+.dashboard-statistics > summary::-webkit-details-marker {
+  display: none;
+}
+
+@supports (interpolate-size: allow-keywords) {
+  .dashboard-statistics {
+    interpolate-size: allow-keywords;
+  }
+
+  .dashboard-statistics::details-content {
+    height: 0;
+    overflow: clip;
+    transition:
+      height 220ms ease,
+      content-visibility 220ms allow-discrete;
+  }
+
+  .dashboard-statistics[open]::details-content {
+    height: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-statistics::details-content {
+    transition: none;
+  }
+}

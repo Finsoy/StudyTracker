@@ -67,7 +67,7 @@ function AppShell() {
       />
       <main key={tab} className="min-w-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-6xl px-8 py-8 xl:px-12">
-          {tab === 'dashboard' && <DashboardPage goal={goal} />}
+          {tab === 'dashboard' && <DashboardPage goal={goal} onNavigate={setTab} />}
           {tab === 'session' && <SessionPage state={state} goal={goal} nowMs={nowMs} />}
           {tab === 'progress' && <ProgressPage />}
           {tab === 'games' && <GamesPage />}
