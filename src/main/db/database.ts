@@ -244,6 +244,10 @@ export const seasonsRepo = {
 
   setStatus(id: number, status: SeasonStatus): void {
     db.prepare('UPDATE seasons SET status = ? WHERE id = ?').run(status, id)
+  },
+
+  updateGoalSec(id: number, goalSec: number): void {
+    db.prepare('UPDATE seasons SET goalSec = ? WHERE id = ?').run(goalSec, id)
   }
 }
 

@@ -5,7 +5,6 @@ import type {
   GamificationSnapshot,
   GoalStatus,
   MilestoneStatus,
-  Season,
   SessionCategory,
   SteamGameCandidate,
   StatsRangeKind,
@@ -37,8 +36,6 @@ export const IPC = {
   togglGetProjects: 'toggl:getProjects',
   togglCreateProject: 'toggl:createProject',
   gamificationGet: 'gamification:get',
-  seasonCreate: 'season:create',
-  seasonComplete: 'season:complete',
   eventTick: 'event:tick',
   eventBlocked: 'event:blocked',
   eventMilestone: 'event:milestone'
@@ -96,12 +93,6 @@ export interface StudyTrackerApi {
   }
   gamification: {
     get(): Promise<GamificationSnapshot>
-    createSeason(input: {
-      name?: string
-      weeks?: number
-      goalHours?: number
-    }): Promise<Season>
-    completeSeason(): Promise<void>
   }
   events: {
     onTick(handler: (payload: TickPayload) => void): () => void

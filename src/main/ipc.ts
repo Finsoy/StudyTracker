@@ -124,12 +124,4 @@ export function registerIpc(services: IpcServices): void {
   ipcMain.handle(IPC.togglCreateProject, (_event, name: string) => toggl.createProject(name))
 
   ipcMain.handle(IPC.gamificationGet, () => gamification.getSnapshot())
-
-  ipcMain.handle(
-    IPC.seasonCreate,
-    (_event, input: { name?: string; weeks?: number; goalHours?: number }) =>
-      gamification.createSeason(input ?? {})
-  )
-
-  ipcMain.handle(IPC.seasonComplete, () => gamification.completeActiveSeason())
 }

@@ -38,16 +38,26 @@ const MILESTONE_DEFS: {
     kind: 'streak',
     threshold: 7,
     label: 'Неделя без пропусков',
-    hint: '7 дней подряд'
+    hint: '7 зачётных дней в одной серии'
+  },
+  {
+    id: 'streak_14',
+    kind: 'streak',
+    threshold: 14,
+    label: 'Стрик 14 дней',
+    hint: '14 зачётных дней в одной серии'
   },
   {
     id: 'streak_30',
     kind: 'streak',
     threshold: 30,
     label: 'Стрик 30 дней',
-    hint: '30 дней подряд'
+    hint: '30 зачётных дней в одной серии'
   },
+  { id: 'hours_1', kind: 'totalHours', threshold: 1, label: 'Первый час', hint: '1 час суммарно' },
+  { id: 'hours_5', kind: 'totalHours', threshold: 5, label: '5 часов', hint: '5 часов суммарно' },
   { id: 'hours_10', kind: 'totalHours', threshold: 10, label: '10 часов', hint: '10 часов суммарно' },
+  { id: 'hours_25', kind: 'totalHours', threshold: 25, label: '25 часов', hint: '25 часов суммарно' },
   { id: 'hours_50', kind: 'totalHours', threshold: 50, label: '50 часов', hint: '50 часов суммарно' },
   {
     id: 'hours_100',
@@ -55,6 +65,13 @@ const MILESTONE_DEFS: {
     threshold: 100,
     label: '100 часов',
     hint: '100 часов суммарно'
+  },
+  {
+    id: 'hours_250',
+    kind: 'totalHours',
+    threshold: 250,
+    label: '250 часов',
+    hint: '250 часов суммарно'
   },
   {
     id: 'season_1',
@@ -139,9 +156,16 @@ function computeLevel(totalSec: number): LevelInfo {
   }
 }
 
-function defaultSeasonName(startDayKey: string): string {
-  const [, month, day] = startDayKey.split('-')
-  return `Сезон ${day}.${month}`
+function monthBounds(dayKey: string): { startDayKey: string; endDayKey: string } {
+  const [year, month] = dayKey.split('-').map(Number)
+  const lastDay = new Date(year, month, 0).getDate()
+  const monthPrefix = dayKey.slice(0, 7)
+  return { startDayKey: `${monthPrefix}-01`, endDayKey: `${monthPrefix}-${lastDay}` }
+}
+
+function isCalendarMonth(season: Season): boolean {
+  const bounds = monthBounds(season.startDayKey)
+  return season.startDayKey === bounds.startDayKey && season.endDayKey === bounds.endDayKey
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -156,18 +180,31 @@ export class GamificationService {
 
   getSnapshot(): GamificationSnapshot {
     const settings = settingsRepo.get()
-    this.expireActiveSeasonIfNeeded()
+    this.ensureCurrentSeason()
     const streak = this.computeStreak(settings.streakMinSec)
     // Include live active session so XP bar moves before stop().
     const totalSec = sessionsRepo.totalSecAllTime() + this.tracker.activeElapsedSec()
     const level = computeLevel(totalSec)
     const season = this.getSeasonProgress()
     const milestones = this.buildMilestoneStatuses(streak, level, season)
+    const todayKey = dayKeyFor(Date.now(), settings.resetHour)
+    const completedMonthKeys = new Set(
+      seasonsRepo
+        .list()
+        .filter(
+          (entry) =>
+            entry.status === 'completed' &&
+            entry.endDayKey < todayKey &&
+            isCalendarMonth(entry)
+        )
+        .map((entry) => entry.startDayKey)
+    )
     return {
       enabled: settings.gamificationEnabled,
       streak,
       level,
       season,
+      completedSeasonCount: completedMonthKeys.size,
       milestones
     }
   }
@@ -185,8 +222,7 @@ export class GamificationService {
 
   /** Persists newly earned milestones; returns only those unlocked in this call. */
   checkNewMilestones(): MilestoneStatus[] {
-    this.expireActiveSeasonIfNeeded()
-    const unlocked = milestonesRepo.listUnlocked()
+    this.ensureCurrentSeason()
     const settings = settingsRepo.get()
     const streak = this.computeStreak(settings.streakMinSec)
     const totalSec = sessionsRepo.totalSecAllTime() + this.tracker.activeElapsedSec()
@@ -195,37 +231,48 @@ export class GamificationService {
     const now = Date.now()
     const newly: MilestoneStatus[] = []
 
-    for (const def of MILESTONE_DEFS) {
-      if (unlocked.has(def.id)) continue
-      if (!this.isMilestoneAchieved(def, streak, level, season)) continue
-      milestonesRepo.unlock(def.id, now)
+    for (const milestone of this.buildMilestoneStatuses(streak, level, season)) {
+      if (milestone.achievedAt !== null || !milestone.achieved) continue
+      milestonesRepo.unlock(milestone.id, now)
       newly.push({
-        id: def.id,
-        kind: def.kind,
-        label: def.label,
-        hint: def.hint,
-        achieved: true,
+        ...milestone,
         achievedAt: now
       })
     }
     return newly
   }
 
-  createSeason(input: { name?: string; weeks?: number; goalHours?: number }): Season {
-    const weeks = input.weeks && input.weeks > 0 ? input.weeks : 4
-    const resetHour = settingsRepo.get().resetHour
-    const startDayKey = dayKeyFor(Date.now(), resetHour)
-    const endDayKey = shiftDayKey(startDayKey, weeks * 7 - 1)
-    const goalHours = input.goalHours ?? weeks * 7 * 1.5
-    const goalSec = Math.round(goalHours * 3600)
-
+  private ensureCurrentSeason(): void {
+    const settings = settingsRepo.get()
+    const todayKey = dayKeyFor(Date.now(), settings.resetHour)
+    const { startDayKey, endDayKey } = monthBounds(todayKey)
     const active = seasonsRepo.getActive()
-    if (active) {
-      seasonsRepo.setStatus(active.id, 'archived')
+    if (active && (active.startDayKey !== startDayKey || active.endDayKey !== endDayKey)) {
+      const isExpiredMonth = isCalendarMonth(active) && active.endDayKey < todayKey
+      if (!isExpiredMonth && this.hasReachedSeasonGoal(active)) {
+        milestonesRepo.unlock('season_1', Date.now())
+      }
+      seasonsRepo.setStatus(active.id, isExpiredMonth ? 'completed' : 'archived')
     }
 
-    return seasonsRepo.insert({
-      name: input.name?.trim() || defaultSeasonName(startDayKey),
+    let goalSec = 0
+    for (let cursor = startDayKey; cursor <= endDayKey; cursor = shiftDayKey(cursor, 1)) {
+      goalSec += isWeekendDayKey(cursor) ? settings.goalWeekendSec : settings.goalWeekdaySec
+    }
+
+    const current = seasonsRepo
+      .list()
+      .find((entry) => entry.startDayKey === startDayKey && entry.endDayKey === endDayKey)
+    if (current) {
+      if (current.status !== 'active') seasonsRepo.setStatus(current.id, 'active')
+      if (current.goalSec !== goalSec) seasonsRepo.updateGoalSec(current.id, goalSec)
+      return
+    }
+
+    const [year, month] = startDayKey.split('-').map(Number)
+    const monthName = new Date(year, month - 1, 1).toLocaleDateString('ru-RU', { month: 'long' })
+    seasonsRepo.insert({
+      name: `${monthName[0].toUpperCase()}${monthName.slice(1)} ${year}`,
       startDayKey,
       endDayKey,
       goalSec,
@@ -233,30 +280,11 @@ export class GamificationService {
     })
   }
 
-  completeActiveSeason(): void {
-    const progress = this.getSeasonProgress()
-    if (!progress) return
-    if (progress.accumulatedSec >= progress.goalSec) {
-      milestonesRepo.unlock('season_1', Date.now())
-    }
-    seasonsRepo.setStatus(progress.season.id, 'completed')
+  private hasReachedSeasonGoal(season: Season): boolean {
+    return season.goalSec > 0 && this.getSeasonProgress(season)!.accumulatedSec >= season.goalSec
   }
 
-  private expireActiveSeasonIfNeeded(): void {
-    const progress = this.getSeasonProgress()
-    if (!progress) return
-    const resetHour = settingsRepo.get().resetHour
-    const todayKey = dayKeyFor(Date.now(), resetHour)
-    if (todayKey > progress.season.endDayKey) {
-      if (progress.accumulatedSec >= progress.goalSec) {
-        milestonesRepo.unlock('season_1', Date.now())
-      }
-      seasonsRepo.setStatus(progress.season.id, 'completed')
-    }
-  }
-
-  private getSeasonProgress(): SeasonProgress | null {
-    const season = seasonsRepo.getActive()
+  private getSeasonProgress(season = seasonsRepo.getActive()): SeasonProgress | null {
     if (!season) return null
 
     const settings = settingsRepo.get()
@@ -285,12 +313,8 @@ export class GamificationService {
     let cursor = season.startDayKey
     while (cursor <= endCap) {
       let daySec = totals.get(cursor) ?? 0
-      if (
-        active &&
-        dayKeyFor(active.startedAt, resetHour) === cursor &&
-        cursor === todayKey
-      ) {
-        daySec = this.tracker.accumulatedTodaySec()
+      if (active && dayKeyFor(active.startedAt, resetHour) === cursor) {
+        daySec += this.tracker.activeElapsedSec()
       }
       if (daySec >= settings.streakMinSec) activeDays += 1
       cursor = shiftDayKey(cursor, 1)
@@ -325,7 +349,14 @@ export class GamificationService {
       case 'season':
         return (
           milestonesRepo.listUnlocked().has('season_1') ||
-          (season !== null && season.accumulatedSec >= season.goalSec)
+          (season !== null && season.goalSec > 0 && season.accumulatedSec >= season.goalSec) ||
+          // Sessions stopped after rollover still belong to their starting month.
+          seasonsRepo.list().some(
+            (entry) =>
+              entry.status === 'completed' &&
+              isCalendarMonth(entry) &&
+              this.hasReachedSeasonGoal(entry)
+          )
         )
     }
   }
@@ -339,11 +370,25 @@ export class GamificationService {
     return MILESTONE_DEFS.map((def) => {
       const achievedAt = unlocked.get(def.id) ?? null
       const achievedNow = this.isMilestoneAchieved(def, streak, level, season)
+      const currentValue =
+        def.kind === 'streak'
+          ? streak.current
+          : def.kind === 'totalHours'
+            ? level.totalSec
+            : (season?.accumulatedSec ?? 0)
+      const targetValue =
+        def.kind === 'streak'
+          ? def.threshold
+          : def.kind === 'totalHours'
+            ? def.threshold * 3600
+            : (season?.goalSec ?? null)
       return {
         id: def.id,
         kind: def.kind,
         label: def.label,
         hint: def.hint,
+        currentValue,
+        targetValue,
         achieved: achievedAt !== null || achievedNow,
         achievedAt
       }

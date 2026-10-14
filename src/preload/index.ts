@@ -39,9 +39,7 @@ const api: StudyTrackerApi = {
     createProject: (name) => ipcRenderer.invoke(IPC.togglCreateProject, name)
   },
   gamification: {
-    get: () => ipcRenderer.invoke(IPC.gamificationGet),
-    createSeason: (input) => ipcRenderer.invoke(IPC.seasonCreate, input),
-    completeSeason: () => ipcRenderer.invoke(IPC.seasonComplete)
+    get: () => ipcRenderer.invoke(IPC.gamificationGet)
   },
   events: {
     onTick: (handler) => {

@@ -160,6 +160,10 @@ export interface MilestoneStatus {
   kind: MilestoneKind
   label: string
   hint: string
+  /** Current streak in days; accumulated time in seconds for hours and season milestones. */
+  currentValue: number
+  /** Same unit as currentValue; null when there is no active season. */
+  targetValue: number | null
   achieved: boolean
   achievedAt: number | null
 }
@@ -169,5 +173,6 @@ export interface GamificationSnapshot {
   streak: StreakInfo
   level: LevelInfo
   season: SeasonProgress | null
+  completedSeasonCount: number
   milestones: MilestoneStatus[]
 }
