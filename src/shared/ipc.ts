@@ -9,6 +9,7 @@ import type {
   SessionCategory,
   SteamGameCandidate,
   StatsRangeKind,
+  StatsSummary,
   TogglConnectionInfo,
   TogglProject,
   TogglStatus,
@@ -21,6 +22,7 @@ export const IPC = {
   trackerStop: 'tracker:stop',
   statsGetDays: 'stats:getDays',
   statsGetGoal: 'stats:getGoal',
+  statsGetSummary: 'stats:getSummary',
   gamesList: 'games:list',
   gamesAddManual: 'games:addManual',
   gamesScanSteam: 'games:scanSteam',
@@ -71,6 +73,7 @@ export interface StudyTrackerApi {
   stats: {
     getDays(kind: StatsRangeKind): Promise<DayStat[]>
     getGoal(): Promise<GoalStatus>
+    getSummary(): Promise<StatsSummary>
   }
   games: {
     list(): Promise<BlockedGame[]>

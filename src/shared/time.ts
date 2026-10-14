@@ -54,6 +54,13 @@ export function shiftDayKey(dayKey: string, deltaDays: number): string {
   return `${yyyy}-${mm}-${dd}`
 }
 
+/** Monday of the calendar week containing the logical day key. */
+export function weekStartDayKeyFor(dayKey: string): string {
+  const [year, month, day] = dayKey.split('-').map(Number)
+  const daysSinceMonday = (new Date(year, month - 1, day).getDay() + 6) % 7
+  return shiftDayKey(dayKey, -daysSinceMonday)
+}
+
 /** Inclusive count of logical days between two dayKeys (start <= end). */
 export function daysBetweenInclusive(startDayKey: string, endDayKey: string): number {
   const [startYear, startMonth, startDay] = startDayKey.split('-').map(Number)

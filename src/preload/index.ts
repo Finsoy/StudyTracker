@@ -16,7 +16,8 @@ const api: StudyTrackerApi = {
   },
   stats: {
     getDays: (kind) => ipcRenderer.invoke(IPC.statsGetDays, kind),
-    getGoal: () => ipcRenderer.invoke(IPC.statsGetGoal)
+    getGoal: () => ipcRenderer.invoke(IPC.statsGetGoal),
+    getSummary: () => ipcRenderer.invoke(IPC.statsGetSummary)
   },
   games: {
     list: () => ipcRenderer.invoke(IPC.gamesList),

@@ -85,6 +85,19 @@ export interface DayStat {
   studySec: number
 }
 
+export interface StatsSummary {
+  dayKey: string
+  weekStartDayKey: string
+  previousWeekStartDayKey: string
+  currentWeekSec: number
+  previousWeekSec: number
+  previousWeekSameDaysSec: number
+  currentMonthSec: number
+  allTimeSec: number
+  averageWeekSec: number | null
+  completedWeekCount: number
+}
+
 export interface TrackerState {
   active: ActiveSession | null
   todayTotalSec: number

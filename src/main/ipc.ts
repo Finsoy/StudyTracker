@@ -54,6 +54,8 @@ export function registerIpc(services: IpcServices): void {
 
   ipcMain.handle(IPC.statsGetGoal, () => goal.getStatus())
 
+  ipcMain.handle(IPC.statsGetSummary, () => goal.getSummary())
+
   ipcMain.handle(IPC.gamesList, () => gamesRepo.list())
 
   ipcMain.handle(IPC.gamesAddManual, async (event) => {
