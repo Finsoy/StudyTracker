@@ -43,6 +43,18 @@ export function formatHms(totalSec: number): string {
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
 }
 
+/** Displays completed minutes without rounding a goal up before it is reached. */
+export function formatDuration(totalSec: number): string {
+  const safeSeconds = Math.max(0, Math.floor(totalSec))
+  if (safeSeconds === 0) return '0 мин'
+  if (safeSeconds < 60) return '< 1 мин'
+
+  const hours = Math.floor(safeSeconds / 3600)
+  const minutes = Math.floor((safeSeconds % 3600) / 60)
+  if (hours === 0) return `${minutes} мин`
+  return minutes === 0 ? `${hours} ч` : `${hours} ч ${minutes} мин`
+}
+
 /** Shifts a logical dayKey by `deltaDays` (may be negative). */
 export function shiftDayKey(dayKey: string, deltaDays: number): string {
   const [year, month, day] = dayKey.split('-').map(Number)

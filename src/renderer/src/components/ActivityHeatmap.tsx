@@ -18,11 +18,11 @@ const MONTH_LABELS = [
 ]
 
 const LEVEL_CLASS = [
-  'bg-[#161b22]',
-  'bg-emerald-900/70',
-  'bg-emerald-700/80',
-  'bg-emerald-500/85',
-  'bg-emerald-400'
+  'bg-[#34322f]',
+  'bg-[#604638]',
+  'bg-[#8c5b43]',
+  'bg-[#b96f4f]',
+  'bg-[#d97757]'
 ] as const
 
 function parseDayKey(dayKey: string): Date {
@@ -96,75 +96,82 @@ export function ActivityHeatmap({ days, todayKey }: ActivityHeatmapProps) {
   }, [days, todayKey])
 
   return (
-    <div className="mt-4">
-      <div className="mb-2 text-xs text-gray-500">
+    <div className="mt-5 min-w-0">
+      <div className="mb-3 text-xs text-muted">
         {activeDays} активных {activeDays === 1 ? 'день' : activeDays < 5 ? 'дня' : 'дней'} за год
       </div>
 
-      <div className="w-full">
-        <div
-          className="mb-1 grid gap-[2px]"
-          style={{
-            gridTemplateColumns: `1.75rem repeat(${weeks.length}, minmax(0, 1fr))`
-          }}
-        >
-          <div />
-          {weeks.map((_, weekIndex) => {
-            const label = monthLabels.find((entry) => entry.weekIndex === weekIndex)
-            return (
-              <div key={weekIndex} className="relative h-3 overflow-visible text-[10px] leading-3 text-gray-500">
-                {label ? <span className="absolute left-0 whitespace-nowrap">{label.label}</span> : null}
-              </div>
-            )
-          })}
-        </div>
-
-        <div className="flex gap-[2px]">
-          <div className="flex w-7 shrink-0 flex-col gap-[2px] text-[10px] leading-[10px] text-gray-500">
-            <span className="h-2.5" />
-            <span className="h-2.5">пн</span>
-            <span className="h-2.5" />
-            <span className="h-2.5">ср</span>
-            <span className="h-2.5" />
-            <span className="h-2.5">пт</span>
-            <span className="h-2.5" />
+      <div className="max-w-full overflow-x-auto pb-1">
+        <div className="min-w-[560px]">
+          <div
+            className="mb-1 grid gap-[2px]"
+            style={{
+              gridTemplateColumns: `1.75rem repeat(${weeks.length}, minmax(0, 1fr))`
+            }}
+          >
+            <div />
+            {weeks.map((_, weekIndex) => {
+              const label = monthLabels.find((entry) => entry.weekIndex === weekIndex)
+              return (
+                <div
+                  key={weekIndex}
+                  className="relative h-3 overflow-visible text-[10px] leading-3 text-muted"
+                >
+                  {label ? (
+                    <span className="absolute left-0 whitespace-nowrap">{label.label}</span>
+                  ) : null}
+                </div>
+              )
+            })}
           </div>
 
-          <div
-            className="grid min-w-0 flex-1 gap-[2px]"
-            style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }}
-          >
-            {weeks.map((week, weekIndex) => (
-              <div key={weekIndex} className="flex flex-col gap-[2px]">
-                {week.map((cell) => {
-                  if (cell.future) {
+          <div className="flex gap-[2px]">
+            <div className="grid w-7 shrink-0 grid-rows-7 gap-[2px] text-[10px] leading-none text-muted">
+              <span />
+              <span className="flex items-center">пн</span>
+              <span />
+              <span className="flex items-center">ср</span>
+              <span />
+              <span className="flex items-center">пт</span>
+              <span />
+            </div>
+
+            <div
+              className="grid min-w-0 flex-1 gap-[2px]"
+              style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }}
+            >
+              {weeks.map((week, weekIndex) => (
+                <div key={weekIndex} className="flex flex-col gap-[2px]">
+                  {week.map((cell) => {
+                    if (cell.future) {
+                      return (
+                        <div
+                          key={cell.date}
+                          className="aspect-square w-full rounded-[2px] bg-transparent"
+                        />
+                      )
+                    }
+                    const level = activityLevel(cell.totalSec)
                     return (
                       <div
                         key={cell.date}
-                        className="aspect-square w-full rounded-[2px] bg-transparent"
+                        title={`${formatDayLabel(cell.date)}: ${formatHms(cell.totalSec)}`}
+                        className={`aspect-square w-full rounded-[2px] ${LEVEL_CLASS[level]}`}
                       />
                     )
-                  }
-                  const level = activityLevel(cell.totalSec)
-                  return (
-                    <div
-                      key={cell.date}
-                      title={`${formatDayLabel(cell.date)}: ${formatHms(cell.totalSec)}`}
-                      className={`aspect-square w-full rounded-[2px] ${LEVEL_CLASS[level]}`}
-                    />
-                  )
-                })}
-              </div>
-            ))}
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div className="mt-3 flex items-center justify-end gap-1.5 text-[10px] text-gray-500">
-          <span>Меньше</span>
-          {LEVEL_CLASS.map((className, index) => (
-            <div key={index} className={`h-2.5 w-2.5 rounded-[2px] ${className}`} />
-          ))}
-          <span>Больше</span>
+          <div className="mt-3 flex items-center justify-end gap-1.5 text-[10px] text-muted">
+            <span>Меньше</span>
+            {LEVEL_CLASS.map((className, index) => (
+              <div key={index} className={`h-2.5 w-2.5 rounded-[2px] ${className}`} />
+            ))}
+            <span>Больше</span>
+          </div>
         </div>
       </div>
     </div>

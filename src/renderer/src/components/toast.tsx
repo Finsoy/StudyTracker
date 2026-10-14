@@ -30,19 +30,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => ({ addToast }), [addToast])
 
   const kindClass: Record<ToastKind, string> = {
-    info: 'border-sky-500/40 bg-sky-500/10 text-sky-100',
-    success: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-100',
-    warning: 'border-amber-500/40 bg-amber-500/10 text-amber-100'
+    info: 'border-line text-ink',
+    success: 'border-sage/50 text-sage',
+    warning: 'border-clay/50 text-clay'
   }
 
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="pointer-events-none fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+      <div
+        aria-live="polite"
+        className="pointer-events-none fixed bottom-6 right-6 z-50 flex flex-col gap-3"
+      >
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`pointer-events-auto min-w-64 max-w-sm rounded-xl border px-4 py-3 text-sm shadow-lg backdrop-blur ${kindClass[toast.kind]}`}
+            className={`pointer-events-auto min-w-64 max-w-sm rounded-xl border bg-surface px-4 py-3 text-sm shadow-lg ${kindClass[toast.kind]}`}
           >
             {toast.message}
           </div>
