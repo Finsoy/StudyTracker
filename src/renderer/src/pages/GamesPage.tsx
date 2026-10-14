@@ -148,7 +148,7 @@ export function GamesPage() {
                   {game.exeName ?? game.installDir}
                 </div>
               </div>
-              <label className="flex cursor-pointer items-center gap-3 text-xs text-muted">
+              <label className="relative flex cursor-pointer items-center gap-3 text-xs text-muted">
                 <input
                   type="checkbox"
                   role="switch"
