@@ -20,7 +20,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   togglEnabled: false,
   togglWorkspaceId: null,
   streakMinSec: 30 * 60,
-  gamificationEnabled: true
+  gamificationEnabled: true,
+  lastSeenLevel: null
 }
 
 const TOGGL_TOKEN_KEY = 'togglApiToken'
@@ -322,7 +323,8 @@ export const settingsRepo = {
       gamificationEnabled: boolOr(
         stored.get('gamificationEnabled'),
         DEFAULT_SETTINGS.gamificationEnabled
-      )
+      ),
+      lastSeenLevel: numberOrNull(stored.get('lastSeenLevel'))
     }
   },
 

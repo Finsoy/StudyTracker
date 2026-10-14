@@ -47,6 +47,8 @@ export interface AppSettings {
   /** Minimum seconds in a logical day to count toward the streak. */
   streakMinSec: number
   gamificationEnabled: boolean
+  /** Highest level acknowledged in the app; null before the first check. */
+  lastSeenLevel: number | null
 }
 
 export interface TogglProject {

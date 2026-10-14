@@ -56,6 +56,61 @@ function AppShell() {
     }
   }, [addToast])
 
+  useEffect(() => {
+    let isCancelled = false
+    let isChecking = false
+    let lastDisplayedLevel: number | null = null
+
+    function canShowToast(): boolean {
+      return !isCancelled && document.visibilityState === 'visible' && document.hasFocus()
+    }
+
+    async function checkLevelUp() {
+      if (isChecking || !canShowToast()) return
+      isChecking = true
+      try {
+        const [settings, snapshot] = await Promise.all([
+          window.api.settings.get(),
+          window.api.gamification.get()
+        ])
+        if (!canShowToast() || !snapshot.enabled) return
+
+        const previousLevel = lastDisplayedLevel ?? settings.lastSeenLevel
+        const currentLevel = snapshot.level.level
+        if (previousLevel === null || currentLevel > previousLevel) {
+          lastDisplayedLevel = currentLevel
+          // Establish a baseline for existing profiles without replaying old levels.
+          if (previousLevel !== null) {
+            addToast(
+              `Ура! Новый уровень ${currentLevel} — ${snapshot.level.title}. Отличная работа!`,
+              'success'
+            )
+          }
+        }
+
+        // Retry a failed save without showing the same celebration again.
+        if (lastDisplayedLevel !== null && settings.lastSeenLevel !== lastDisplayedLevel) {
+          await window.api.settings.update({ lastSeenLevel: lastDisplayedLevel })
+        }
+      } catch (error) {
+        console.error('Failed to check or save level-up progress', error)
+      } finally {
+        isChecking = false
+      }
+    }
+
+    void checkLevelUp()
+    const timer = setInterval(checkLevelUp, 5000)
+    window.addEventListener('focus', checkLevelUp)
+    document.addEventListener('visibilitychange', checkLevelUp)
+    return () => {
+      isCancelled = true
+      clearInterval(timer)
+      window.removeEventListener('focus', checkLevelUp)
+      document.removeEventListener('visibilitychange', checkLevelUp)
+    }
+  }, [addToast])
+
   return (
     <div className="flex h-full">
       <Sidebar
